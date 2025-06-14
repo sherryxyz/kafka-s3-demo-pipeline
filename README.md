@@ -8,6 +8,8 @@ This project demonstrates how to build a simple data pipeline using **Apache Kaf
 
 ⚠️ Note: Amazon S3 is a paid service. If you're using a non-new AWS account, you may be charged for object storage and requests. Please follow the cleanup instructions below to avoid extra charges.
 
+🔗 Reference: This project uses a KRaft-based Kafka setup inspired by this guide by Say Backend.
+
 ---
 
 ## 🔧 Project Structure
