@@ -1,0 +1,49 @@
+services:
+  kafka:
+    image: apache/kafka:latest    # Use the official Apache Kafka image
+    container_name: broker        # Name of the Kafka broker container
+    environment:
+      KAFKA_NODE_ID: 1            # Unique ID of this Kafka node (used in KRaft mode)
+      KAFKA_PROCESS_ROLES: broker,controller  # This node acts as both broker and controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      # Define internal listener for clients (9092), internal controller listener (9093),
+      # and an external listener for local machine access (9094)
+
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092,EXTERNAL://localhost:9094
+      # Advertise how clients should connect (from inside the container and from host machine)
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      # Mapping of listener names to protocols
+
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:9093  # Define controller quorum (node 1 at broker:9093)
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER    # Tell Kafka which listener(s) are used by controllers
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1      # Minimum required to store offset data (1 = no replication)
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1         # Required for transactions (set to 1 for local, non-replicated dev setup)
+
+    ports:
+      - "9094:9094"   # Expose external listener to host (so your Python script can talk to Kafka)
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "./opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1",
+        ]
+        # Health check command to ensure broker is responding
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest    # Kafka UI dashboard image
+    container_name: kafka-ui
+    ports:
+      - "8088:8080"         # Expose the web UI on localhost:8088
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local                    # Name of the Kafka cluster in the UI
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:9092  # Connect UI to the broker's internal listener
+      KAFKA_CLUSTERS_0_READONLY: "false"              # Allow creating/deleting topics via the UI
+    depends_on:
+      kafka:
+        condition: service_healthy                    # Wait until Kafka is healthy before starting the UI
+        
